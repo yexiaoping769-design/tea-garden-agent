@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>智能问答助手</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: system-ui, 'Segoe UI', Roboto;
+            background: #f0f2f5;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .chat-container {
+            width: 100%;
+            max-width: 800px;
+            height: 90vh;
+            background: white;
+            border-radius: 28px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .chat-header {
+            background: #1e3a8a;
+            color: white;
+            padding: 18px;
+            text-align: center;
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: #f9fafb;
+        }
+        .message { display: flex; }
+        .user { justify-content: flex-end; }
+        .assistant { justify-content: flex-start; }
+        .tool { justify-content: flex-start; }
+        .bubble {
+            max-width: 75%;
+            padding: 10px 16px;
+            border-radius: 20px;
+            font-size: 0.95rem;
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+        .user .bubble {
+            background: #1e3a8a;
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+        .assistant .bubble {
+            background: white;
+            color: #1f2937;
+            border: 1px solid #e5e7eb;
+            border-bottom-left-radius: 4px;
+        }
+        .tool .bubble {
+            background: #f3f4f6;
+            color: #6b7280;
+            font-style: italic;
+            font-size: 0.85rem;
+            border: 1px solid #e5e7eb;
+            border-bottom-left-radius: 4px;
+        }
+        .chat-input {
+            padding: 16px;
+            background: white;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            gap: 12px;
+        }
+        .chat-input input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid #d1d5db;
+            border-radius: 40px;
+            font-size: 1rem;
+            outline: none;
+        }
+        .chat-input input:focus {
+            border-color: #1e3a8a;
+            box-shadow: 0 0 0 2px rgba(30,58,138,0.2);
+        }
+        .chat-input button {
+            background: #1e3a8a;
+            color: white;
+            border: none;
+            padding: 0 24px;
+            border-radius: 40px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .chat-input button:hover { background: #0f2b6d; }
+        .typing { color: #6b7280; font-style: italic; }
+        .button-new {
+            background: #6b7280;
+            margin-left: 8px;
+        }
+        .flex-row {
+            display: flex;
+            gap: 8px;
+        }
+    </style>
+</head>
+<body>
+<div class="chat-container">
+    <div class="chat-header">🤖 智能问答助手</div>
+    <div class="chat-messages" id="chatMessages">
+        <div class="message assistant"><div class="bubble">你好！我能查天气、搜新闻、读取环境变量和本地文件。试试问我“北京天气”、“最近AI新闻”、“我的用户名”或“读一下 D:/test.txt”。</div></div>
+    </div>
+    <div class="chat-input">
+        <input type="text" id="messageInput" placeholder="输入你的问题..." autofocus>
+        <div class="flex-row">
+            <button id="sendBtn">发送</button>
+            <button id="newSessionBtn" class="button-new">新会话</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentThreadId = localStorage.getItem("threadId");
+    if (!currentThreadId) {
+        currentThreadId = crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => (Math.random()*16|0).toString(16));
+        localStorage.setItem("threadId", currentThreadId);
+    }
+
+    const chatMessages = document.getElementById('chatMessages');
+    const messageInput = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const newSessionBtn = document.getElementById('newSessionBtn');
+
+    function addMessage(role, text, isTool = false) {
+        const div = document.createElement('div');
+        if (isTool) {
+            div.className = 'message tool';
+        } else {
+            div.className = `message ${role}`;
+        }
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble';
+        bubble.innerText = text;
+        div.appendChild(bubble);
+        chatMessages.appendChild(div);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function showTyping() {
+        const div = document.createElement('div');
+        div.className = 'message assistant';
+        div.id = 'typingIndicator';
+        div.innerHTML = '<div class="bubble typing">正在思考...</div>';
+        chatMessages.appendChild(div);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function removeTyping() {
+        const el = document.getElementById('typingIndicator');
+        if (el) el.remove();
+    }
+
+    async function sendMessage() {
+        const msg = messageInput.value.trim();
+        if (!msg) return;
+        addMessage('user', msg);
+        messageInput.value = '';
+        messageInput.focus();
+        showTyping();
+        try {
+            const res = await fetch('http://127.0.0.1:5050/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: msg, thread_id: currentThreadId })
+            });
+            const data = await res.json();
+            removeTyping();
+            if (data.error) {
+                addMessage('assistant', `错误: ${data.error}`);
+            } else {
+                // 显示工具调用信息
+                if (data.tool_calls_info && data.tool_calls_info.length > 0) {
+                    for (let info of data.tool_calls_info) {
+                        if (info.type === 'call') {
+                            addMessage('assistant', `🔧 调用工具: ${info.tool}，参数: ${JSON.stringify(info.args)}`, true);
+                        } else if (info.type === 'result') {
+                            let resultText = info.content.length > 150 ? info.content.substring(0, 150) + '...' : info.content;
+                            addMessage('assistant', `📦 工具返回: ${resultText}`, true);
+                        }
+                    }
+                }
+                // 显示最终回答
+                addMessage('assistant', data.reply);
+                // 更新 thread_id（一般不变）
+                if (data.thread_id && data.thread_id !== currentThreadId) {
+                    currentThreadId = data.thread_id;
+                    localStorage.setItem("threadId", currentThreadId);
+                }
+            }
+        } catch (err) {
+            removeTyping();
+            addMessage('assistant', '连接失败，请确认后端服务已启动 (python web_app.py)');
+            console.error(err);
+        }
+    }
+
+    sendBtn.addEventListener('click', sendMessage);
+    messageInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
+    newSessionBtn.addEventListener('click', () => {
+        currentThreadId = crypto.randomUUID();
+        localStorage.setItem("threadId", currentThreadId);
+        chatMessages.innerHTML = '';
+        addMessage('assistant', '已开启新会话，之前的对话历史已清除。');
+    });
+</script>
+</body>
+</html>
