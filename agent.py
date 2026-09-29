@@ -12,6 +12,7 @@ from langchain_core.tools import tool
 from pydantic import BaseModel,Field
 from langgraph.checkpoint.memory import MemorySaver
 import requests,json
+from rag_core import search_tea_knowledge as rag_search
 
 
 #加载环境变量
@@ -72,20 +73,38 @@ def get_weather(loc: str) -> str:
             "weather_code": current.get("weathercode"),
             "observation_time": current.get("time")
         }
+
+        # 茶园防霜预警：结合气温和天气代码给出农事建议
+        temp = current.get("temperature")
+        code = current.get("weathercode")
+        if temp is not None and temp <= 2.0:
+            result["tea_frost_advice"] = (
+                "⚠️ 低温霜冻风险：当前气温接近冰点，茶芽易受冻。"
+                "建议立即采取覆盖防霜、熏烟防霜或灌水防霜等措施。"
+            )
+        elif code in (71, 73, 75, 77, 85, 86, 66, 67):
+            result["tea_frost_advice"] = "⚠️ 出现雨雪/冻雨天气，注意茶树防冻，及时清理芽叶积雪。"
+        elif temp is not None and temp <= 8.0:
+            result["tea_frost_advice"] = "气温偏低，注意倒春寒，关注夜间气温变化。"
+        else:
+            result["tea_frost_advice"] = "气温正常，暂无霜冻风险。"
+
         # 关键修复点：确保所有输出都为 ASCII 安全形式
         return json.dumps(result, ensure_ascii=True)
 
     except Exception as e:
         return json.dumps({"error": str(e)}, ensure_ascii=True)
-@tool
-def get_env_var(var_name: str) -> str:
-    """获取系统环境变量的值。"""
-    value = os.environ.get(var_name)
-    if value is None:
-        return f"环境变量 {var_name} 不存在"
-    if len(value) > 500:
-        value = value[:500] + "...(已截断)"
-    return value
+
+class TeaKnowledgeQuery(BaseModel):
+    query: str = Field(description="茶园管理相关的检索问题，例如'茶饼病怎么防治'、'春茶前如何施肥'")
+
+@tool(args_schema=TeaKnowledgeQuery)
+def search_tea_knowledge(query: str) -> str:
+    """
+    检索本地茶园知识库（含农业农村部茶树病虫害防控、栽培技术标准等官方文档）。
+    当用户询问茶树种植、病虫害防治、施肥、修剪、采摘、霜冻防御等茶园管理知识时，使用此工具。
+    """
+    return rag_search(query)
 
 @tool
 def read_local_file(file_path: str) -> str:
@@ -141,21 +160,21 @@ def read_local_file(file_path: str) -> str:
 DeepSeek_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 model = ChatDeepSeek(model="deepseek-chat", api_key=DeepSeek_API_KEY)
 
-tools=[search_tool,get_weather,get_env_var,read_local_file]
+tools=[search_tool,get_weather,search_tea_knowledge,read_local_file]
 prompt="""
-    你是一名乐于助人的智能助手，擅长根据用户的问题选择合适的工具来查询信息并回答。
+    你是"茶园智问"，一名专业的茶园种植管理助手，服务对象是茶农和茶园管理者。
 
-    当用户的问题涉及天气信息时，你应优先调用"get_weather"工具，查询用户指定城市的实时天气，并在回答中总结查询结果。
+    工具使用规则：
+    1. 当用户询问天气、气温，或结合天气问农事（例如"今天要不要防霜冻"）时，调用"get_weather"查询实时天气，
+       并结合返回结果中的 tea_frost_advice 字段给出农事建议。
+    2. 当用户询问茶树病虫害防治、种植、施肥、修剪、采摘等茶园管理知识时，优先调用"search_tea_knowledge"
+       检索本地知识库（内含农业农村部官方标准），回答时标注来源。
+    3. 当用户询问最新新闻、茶叶市场行情等实时动态时，调用"search_tool"联网检索。
+    4. 当用户要求读取本地文件时，调用"read_local_file"。
+    5. 一个问题涉及多个方面时，依次调用对应的工具，综合结果后回答。
 
-    当用户的问题涉及"新闻、事件、实时动态"时，你应优先调用"search_tool"工具，检索相关的最新信息，并在回答中简要概述。
-
-    当用户的问题涉及“环境变量、系统信息、我的用户名、PATH”等内容时，调用“get_env_var”工具。
-
-    当用户要求“读取本地文件”（例如“帮我读一下D:\test.txt”）时，调用“read_local_file”工具。
-
-    如果问题同时包含多个方面，依次调用对应的工具，合并结果后回复。
-
-    所有回答应使用简体中文，条理清晰、简洁友好。
+    回答要求：使用简体中文，条理清晰、简洁友好；引用知识库内容时注明来源；
+    知识库和工具都无法确认的内容，如实告知，不要编造。
 """
 
 #创建图
