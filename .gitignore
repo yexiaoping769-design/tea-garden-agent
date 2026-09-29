@@ -36,3 +36,7 @@ Thumbs.db
 dist/
 build/
 *.egg-info/
+
+# RAG artifacts (rebuildable: run build_kb.py)
+kb_db/
+.hf_cache/
