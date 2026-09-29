@@ -1,0 +1,186 @@
+{
+  "description": "茶园智问评测集：20条。type: kb=知识库问答 / weather=天气工具 / multi=多工具组合 / web=联网搜索 / refusal=知识库外问题(考察不编造)。key_points 供LLM裁判参考；retrieval_keywords 供检索评测判定命中(全部出现在top3才算命中)。",
+  "cases": [
+    {
+      "id": 1,
+      "category": "病虫害防治",
+      "type": "kb",
+      "question": "茶饼病怎么防治？",
+      "retrieval_keywords": ["茶饼病"],
+      "key_points": ["发病初期用3%多抗霉素300倍液喷雾防治", "病害常发的茶园秋季封园后喷0.6%石灰半量式波尔多液"],
+      "expect_tools": ["search_tea_knowledge"]
+    },
+    {
+      "id": 2,
+      "category": "病虫害防治",
+      "type": "kb",
+      "question": "茶小绿叶蝉怎么防治？",
+      "retrieval_keywords": ["叶蝉"],
+      "key_points": ["分批、多次、及时采摘抑制发生", "色板诱杀", "药剂如15%茚虫威乳油2500倍液或22%噻虫嗪·高效氯氟氰菊酯6000倍液", "秋季封园喷45%晶体石硫合剂"],
+      "expect_tools": ["search_tea_knowledge"]
+    },
+    {
+      "id": 3,
+      "category": "病虫害防治",
+      "type": "kb",
+      "question": "茶毛虫用什么方法防治？",
+      "retrieval_keywords": ["茶毛虫"],
+      "key_points": ["11月至次年2月人工摘除越冬卵块", "灯光诱杀成虫"],
+      "expect_tools": ["search_tea_knowledge"]
+    },
+    {
+      "id": 4,
+      "category": "病虫害防治",
+      "type": "kb",
+      "question": "灰茶尺蠖如何防治？",
+      "retrieval_keywords": ["尺蠖"],
+      "key_points": ["结合秋冬季深耕翻出表土中的虫蛹", "窄波LED杀虫灯诱杀成虫", "性信息素诱杀", "生物农药如短稳杆菌、苦参碱"],
+      "expect_tools": ["search_tea_knowledge"]
+    },
+    {
+      "id": 5,
+      "category": "病虫害防治",
+      "type": "kb",
+      "question": "茶园里的黑刺粉虱怎么处理？",
+      "retrieval_keywords": ["粉虱"],
+      "key_points": ["色板诱杀（趋黄绿色特性）", "秋季封园后喷施石硫合剂"],
+      "expect_tools": ["search_tea_knowledge"]
+    },
+    {
+      "id": 6,
+      "category": "病虫害防治",
+      "type": "kb",
+      "question": "茶白星病怎么预防？",
+      "retrieval_keywords": ["白星病"],
+      "key_points": ["分批、多次、及时采摘", "适度修剪并剪除病枝叶带出茶园", "发病初期可用多抗霉素"],
+      "expect_tools": ["search_tea_knowledge"]
+    },
+    {
+      "id": 7,
+      "category": "病虫害防治",
+      "type": "kb",
+      "question": "茶园什么时候喷波尔多液？",
+      "retrieval_keywords": ["波尔多液"],
+      "key_points": ["秋季封园后使用", "0.6%石灰半量式波尔多液"],
+      "expect_tools": ["search_tea_knowledge"]
+    },
+    {
+      "id": 8,
+      "category": "病虫害防治",
+      "type": "kb",
+      "question": "茶叶炭疽病发病初期用什么药？",
+      "retrieval_keywords": ["炭疽病"],
+      "key_points": ["3%多抗霉素300倍液喷雾"],
+      "expect_tools": ["search_tea_knowledge"]
+    },
+    {
+      "id": 9,
+      "category": "栽培管理",
+      "type": "kb",
+      "question": "名优绿茶茶园全年氮肥用量是多少？",
+      "retrieval_keywords": ["氮肥"],
+      "key_points": ["13—20kg/亩（按纯氮计）"],
+      "expect_tools": ["search_tea_knowledge"]
+    },
+    {
+      "id": 10,
+      "category": "栽培管理",
+      "type": "kb",
+      "question": "茶园铺草覆盖多厚比较合适？",
+      "retrieval_keywords": ["铺草"],
+      "key_points": ["覆盖厚度8—10厘米", "防寒在土壤冻结前铺，防旱在干旱季节开始前铺"],
+      "expect_tools": ["search_tea_knowledge"]
+    },
+    {
+      "id": 11,
+      "category": "栽培管理",
+      "type": "kb",
+      "question": "茶园深耕有哪些技术要求？",
+      "retrieval_keywords": ["深耕"],
+      "key_points": ["深度15厘米以上、不超过30厘米", "宽度40—50厘米", "不靠近茶树根颈部位", "与施基肥结合进行"],
+      "expect_tools": ["search_tea_knowledge"]
+    },
+    {
+      "id": 12,
+      "category": "栽培管理",
+      "type": "kb",
+      "question": "茶园可以间作哪些绿肥？",
+      "retrieval_keywords": ["绿肥"],
+      "key_points": ["苕子、紫云英、黄花苜蓿、白三叶草、鼠茅草等，答出其中2-3种即可"],
+      "expect_tools": ["search_tea_knowledge"]
+    },
+    {
+      "id": 13,
+      "category": "栽培管理",
+      "type": "kb",
+      "question": "分批及时采摘对防治害虫有什么好处？",
+      "retrieval_keywords": ["虫口"],
+      "key_points": ["随芽叶带走虫卵和低龄若（幼）虫", "降低虫口密度", "抑制茶小绿叶蝉、茶橙瘿螨、茶蚜等"],
+      "expect_tools": ["search_tea_knowledge"]
+    },
+    {
+      "id": 14,
+      "category": "天气查询",
+      "type": "weather",
+      "question": "北京今天天气怎么样？",
+      "retrieval_keywords": [],
+      "key_points": ["报出北京当前的气温、风速等实况信息"],
+      "expect_tools": ["get_weather"]
+    },
+    {
+      "id": 15,
+      "category": "天气查询",
+      "type": "weather",
+      "question": "武夷山现在气温多少，需要防霜冻吗？",
+      "retrieval_keywords": [],
+      "key_points": ["报出武夷山当前气温", "结合霜冻预警信息给出是否需要防霜冻的农事建议"],
+      "expect_tools": ["get_weather"]
+    },
+    {
+      "id": 16,
+      "category": "多工具组合",
+      "type": "multi",
+      "question": "今天武夷山天气适合采茶吗？",
+      "retrieval_keywords": [],
+      "key_points": ["报出武夷山当前天气状况", "结合温度、降水等判断是否适合采茶"],
+      "expect_tools": ["get_weather"]
+    },
+    {
+      "id": 17,
+      "category": "多工具组合",
+      "type": "multi",
+      "question": "今天武夷山气温多少？另外茶饼病发病初期用什么药？",
+      "retrieval_keywords": [],
+      "key_points": ["报出武夷山当前气温", "茶饼病发病初期用3%多抗霉素300倍液"],
+      "expect_tools": ["get_weather", "search_tea_knowledge"]
+    },
+    {
+      "id": 18,
+      "category": "联网检索",
+      "type": "web",
+      "question": "最近有什么茶叶行业的新闻？",
+      "retrieval_keywords": [],
+      "key_points": ["给出近期茶叶行业新闻要点"],
+      "expect_tools": ["tavily_search"]
+    },
+    {
+      "id": 19,
+      "category": "联网检索",
+      "type": "web",
+      "question": "现在茶叶市场行情怎么样？",
+      "retrieval_keywords": [],
+      "key_points": ["给出当前茶叶市场行情的相关信息"],
+      "expect_tools": ["tavily_search"]
+    },
+    {
+      "id": 20,
+      "category": "诚实性",
+      "type": "refusal",
+      "question": "龙井43和福鼎大白茶哪个品种更好？",
+      "retrieval_keywords": [],
+      "key_points": [],
+      "expect_tools": [],
+      "expectation": "知识库中没有品种对比内容，预期如实说明无法回答或依据有限资料谨慎作答，不得编造具体的品种对比结论"
+    }
+  ]
+}

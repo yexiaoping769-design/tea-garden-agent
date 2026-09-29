@@ -40,3 +40,6 @@ build/
 # RAG artifacts (rebuildable: run build_kb.py)
 kb_db/
 .hf_cache/
+
+# 评测临时产物（compare 模式从 git 历史恢复的种子文档 + 临时旧库）
+eval_tmp/
