@@ -4,6 +4,8 @@
 运行后生成 kb_db/ 目录（本地向量数据库），之后 rag_cli.py 会读它。
 """
 import os
+import re
+import unicodedata
 from pathlib import Path
 
 # 国内镜像下载模型 + 缓存重定向到项目文件夹（不占C盘）
@@ -19,16 +21,32 @@ DOCS_DIR = BASE / "docs"
 DB_DIR = BASE / "kb_db"
 MODEL_NAME = "BAAI/bge-small-zh-v1.5"
 
+# Unicode 私用区（码位无公开定义，PDF 字体映射出错时常表现为这些"乱码"）
+PUA_RE = re.compile(r"[\uE000-\uF8FF\U000F0000-\U0010FFFD]")
+
+
+def normalize_text(text: str) -> str:
+    """PDF 提取文本清洗（对 txt 同样无害）：
+    1) NFKC 归一化：全角数字/字母/标点转半角（５→5、％→%）
+    2) 私用区字符修复：本套标准 PDF 的字体把章节号中的"．"映射到了私用区，
+       表现为数字之间的乱码（如 ５?２?４ 实为 5.2.4）→ 按上下文还原为"."
+    3) 其余无上下文依据的私用区字符直接剔除，避免污染向量
+    """
+    text = unicodedata.normalize("NFKC", text)
+    text = re.sub(r"(?<=\d) ?(?:" + PUA_RE.pattern + r")+ ?(?=\d)", ".", text)
+    text = PUA_RE.sub("", text)
+    return re.sub(r"[ \t\u3000]+", " ", text)
+
 
 def read_doc(path: Path) -> str:
-    """按扩展名提取纯文本：txt/md 直接读，pdf 用 PyPDF2 逐页提取。"""
+    """按扩展名提取纯文本：txt/md 直接读，pdf 用 PyMuPDF 逐页提取。"""
     suffix = path.suffix.lower()
     if suffix in (".txt", ".md"):
-        return path.read_text(encoding="utf-8")
+        return normalize_text(path.read_text(encoding="utf-8"))
     if suffix == ".pdf":
-        from PyPDF2 import PdfReader
-        reader = PdfReader(str(path))
-        return "\n".join(page.extract_text() or "" for page in reader.pages)
+        import pymupdf  # 比 PyPDF2 更快，且对中文嵌入字体的兼容性更好
+        with pymupdf.open(str(path)) as doc:
+            return normalize_text("\n".join(page.get_text() for page in doc))
     return ""
 
 
