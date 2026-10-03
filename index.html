@@ -116,16 +116,18 @@
 </head>
 <body>
 <div class="chat-container">
-    <div class="chat-header">🤖 智能问答助手</div>
+    <div class="chat-header">🍵 茶园智问 · 茶园管理助手</div>
     <div class="chat-messages" id="chatMessages">
-        <div class="message assistant"><div class="bubble">你好！我能查天气、搜新闻、读取环境变量和本地文件。试试问我“北京天气”、“最近AI新闻”、“我的用户名”或“读一下 D:/test.txt”。</div></div>
+        <div class="message assistant"><div class="bubble">你好！我是"茶园智问"。试试问我"茶饼病怎么防治"、"武夷山今天要防霜冻吗"，或点"📎 上传"把 PDF/Word 资料加入我的知识库，我就能回答里面的内容了。</div></div>
     </div>
     <div class="chat-input">
         <input type="text" id="messageInput" placeholder="输入你的问题..." autofocus>
         <div class="flex-row">
             <button id="sendBtn">发送</button>
+            <button id="uploadBtn">📎 上传</button>
             <button id="newSessionBtn" class="button-new">新会话</button>
         </div>
+        <input type="file" id="fileInput" accept=".pdf,.docx,.txt,.md" style="display:none">
     </div>
 </div>
 
@@ -221,6 +223,36 @@
         localStorage.setItem("threadId", currentThreadId);
         chatMessages.innerHTML = '';
         addMessage('assistant', '已开启新会话，之前的对话历史已清除。');
+    });
+
+    // 上传文档 → 入知识库
+    const uploadBtn = document.getElementById('uploadBtn');
+    const fileInput = document.getElementById('fileInput');
+    uploadBtn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', async () => {
+        const file = fileInput.files[0];
+        if (!file) return;
+        addMessage('user', `📎 上传文件：${file.name}`);
+        uploadBtn.disabled = true;
+        uploadBtn.textContent = '入库中...';
+        try {
+            const fd = new FormData();
+            fd.append('file', file);
+            const res = await fetch('http://127.0.0.1:5050/upload', { method: 'POST', body: fd });
+            const data = await res.json();
+            if (data.error) {
+                addMessage('assistant', `入库失败：${data.error}`);
+            } else {
+                addMessage('assistant', `✅《${data.filename}》已加入知识库（${data.chunks} 个知识块）。现在可以直接问我这份文档里的内容了。`);
+            }
+        } catch (err) {
+            addMessage('assistant', '上传失败，请确认后端服务已启动 (python web_app.py)');
+            console.error(err);
+        } finally {
+            uploadBtn.disabled = false;
+            uploadBtn.textContent = '📎 上传';
+            fileInput.value = '';
+        }
     });
 </script>
 </body>

@@ -41,5 +41,8 @@ build/
 kb_db/
 .hf_cache/
 
+# 用户上传的原始文件（已向量化入库，无需进仓库）
+uploads/
+
 # 评测临时产物（compare 模式从 git 历史恢复的种子文档 + 临时旧库）
 eval_tmp/

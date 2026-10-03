@@ -1,11 +1,17 @@
 import os
 import uuid
+from pathlib import Path
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from agent import agent
+from rag_core import ingest_file
 
 app = Flask(__name__, static_folder=".", static_url_path="")
 CORS(app)
+
+# 上传文件暂存目录 + 允许的格式
+UPLOAD_DIR = Path(__file__).parent / "uploads"
+ALLOWED_EXTS = {".pdf", ".docx", ".txt", ".md"}
 
 # 用于记录每个会话已处理的消息数量（用于调试）
 processed_counts = {}
@@ -13,6 +19,28 @@ processed_counts = {}
 @app.route("/")
 def index():
     return send_from_directory(".", "index.html")
+
+@app.route("/upload", methods=["POST"])
+def upload():
+    """在线上传文档入知识库：保存 → 解析 → 切分 → 向量化 → 增量写入 Chroma。"""
+    file = request.files.get("file")
+    if not file or not file.filename:
+        return jsonify({"error": "没有收到文件"}), 400
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in ALLOWED_EXTS:
+        return jsonify({"error": f"不支持的文件类型 {ext}，仅支持 PDF/Word(.docx)/txt/md"}), 400
+
+    UPLOAD_DIR.mkdir(exist_ok=True)
+    save_path = UPLOAD_DIR / file.filename
+    file.save(save_path)
+
+    try:
+        chunks = ingest_file(save_path)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": f"入库失败：{e}"}), 500
+    return jsonify({"chunks": chunks, "filename": file.filename})
 
 @app.route("/chat", methods=["POST"])
 def chat():
