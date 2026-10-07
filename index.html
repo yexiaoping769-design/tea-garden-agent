@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>智能问答助手</title>
+    <!-- Markdown 渲染：marked 负责排版，DOMPurify 负责防注入；加载失败时自动退回纯文本显示 -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -104,6 +107,14 @@
         }
         .chat-input button:hover { background: #0f2b6d; }
         .typing { color: #6b7280; font-style: italic; }
+        /* Markdown 渲染后的排版微调 */
+        .md-body p { margin: 4px 0; }
+        .md-body ul, .md-body ol { margin: 4px 0 4px 22px; }
+        .md-body h1, .md-body h2, .md-body h3 { margin: 10px 0 4px; font-size: 1.02rem; }
+        .md-body code { background: #f3f4f6; padding: 1px 5px; border-radius: 4px; font-size: 0.9em; }
+        .md-body pre { background: #f3f4f6; padding: 8px; border-radius: 8px; overflow-x: auto; }
+        .md-body table { border-collapse: collapse; margin: 6px 0; }
+        .md-body td, .md-body th { border: 1px solid #e5e7eb; padding: 3px 8px; }
         .button-new {
             background: #6b7280;
             margin-left: 8px;
@@ -158,6 +169,28 @@
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
+    // 将 Markdown 文本渲染为安全 HTML；marked/DOMPurify 未加载成功时退回纯文本
+    function renderMarkdown(text) {
+        if (window.marked && window.DOMPurify) {
+            return DOMPurify.sanitize(marked.parse(text));
+        }
+        const d = document.createElement('div');
+        d.innerText = text;
+        return d.innerHTML;
+    }
+
+    // 与 addMessage 类似，但按 Markdown 渲染（用于 Agent 最终回答）
+    function addRichMessage(role, markdownText) {
+        const div = document.createElement('div');
+        div.className = `message ${role}`;
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble md-body';
+        bubble.innerHTML = renderMarkdown(markdownText);
+        div.appendChild(bubble);
+        chatMessages.appendChild(div);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
     function showTyping() {
         const div = document.createElement('div');
         div.className = 'message assistant';
@@ -201,8 +234,8 @@
                         }
                     }
                 }
-                // 显示最终回答
-                addMessage('assistant', data.reply);
+                // 显示最终回答（按 Markdown 渲染）
+                addRichMessage('assistant', data.reply);
                 // 更新 thread_id（一般不变）
                 if (data.thread_id && data.thread_id !== currentThreadId) {
                     currentThreadId = data.thread_id;
