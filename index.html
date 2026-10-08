@@ -320,9 +320,10 @@
                             tools.map(t => {
                                 const argsPretty = safeJson(t.args);
                                 const resultPretty = safeJson(t.result);
-                                const resultSummary = (t.result || '').length > 100
-                                    ? t.result.substring(0, 100) + '...'
-                                    : (t.result || '(无返回)');
+                                // 摘要用美化后的文本（解析成功则含真实中文，非 \uXXXX 转义）
+                                const resultSummary = resultPretty.length > 100
+                                    ? resultPretty.substring(0, 100) + '...'
+                                    : (resultPretty || '(无返回)');
                                 return `
                                     <div class="tool-block">
                                         <span class="tool-name">${t.tool}</span>
