@@ -123,6 +123,67 @@
             display: flex;
             gap: 8px;
         }
+        /* 工具调用折叠面板 */
+        .tool-trace {
+            max-width: 75%;
+            background: #f3f4f6;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 0;
+            font-size: 0.85rem;
+            color: #4b5563;
+        }
+        .tool-trace summary {
+            padding: 8px 14px;
+            cursor: pointer;
+            font-weight: 500;
+            color: #6b7280;
+            list-style: none; /* 隐藏默认三角 */
+            user-select: none;
+        }
+        .tool-trace summary::-webkit-details-marker { display: none; }
+        .tool-trace summary::before {
+            content: '▶ ';
+            font-size: 0.75rem;
+            transition: transform 0.15s;
+            display: inline-block;
+        }
+        .tool-trace[open] summary::before {
+            transform: rotate(90deg);
+        }
+        .tool-trace-body {
+            padding: 0 14px 12px;
+            border-top: 1px solid #e5e7eb;
+        }
+        .tool-block {
+            padding: 8px 0;
+            border-bottom: 1px dashed #e5e7eb;
+        }
+        .tool-block:last-child { border-bottom: none; }
+        .tool-block .tool-name {
+            font-weight: 600;
+            color: #1f2937;
+        }
+        .tool-block .tool-label {
+            color: #9ca3af;
+            margin-right: 6px;
+        }
+        .tool-block pre {
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 0.8rem;
+            max-height: 180px;
+            overflow: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+            margin: 4px 0 0 0;
+        }
+        .tool-block .result-summary {
+            color: #6b7280;
+            font-size: 0.82rem;
+        }
     </style>
 </head>
 <body>
@@ -179,6 +240,17 @@
         return d.innerHTML;
     }
 
+    // 尝试把字符串/对象格式化为美化 JSON；无法解析则原样返回
+    function safeJson(obj) {
+        if (obj == null) return '(空)';
+        if (typeof obj === 'string') {
+            try { return JSON.stringify(JSON.parse(obj), null, 2); }
+            catch { return obj; }
+        }
+        try { return JSON.stringify(obj, null, 2); }
+        catch { return String(obj); }
+    }
+
     // 与 addMessage 类似，但按 Markdown 渲染（用于 Agent 最终回答）
     function addRichMessage(role, markdownText) {
         const div = document.createElement('div');
@@ -223,15 +295,53 @@
             if (data.error) {
                 addMessage('assistant', `错误: ${data.error}`);
             } else {
-                // 显示工具调用信息
+                // 显示工具调用信息：聚合为折叠面板（call+result 一一配对）
                 if (data.tool_calls_info && data.tool_calls_info.length > 0) {
+                    // 1) 按顺序配对 call + result
+                    const tools = [];
+                    let current = null;
                     for (let info of data.tool_calls_info) {
                         if (info.type === 'call') {
-                            addMessage('assistant', `🔧 调用工具: ${info.tool}，参数: ${JSON.stringify(info.args)}`, true);
-                        } else if (info.type === 'result') {
-                            let resultText = info.content.length > 150 ? info.content.substring(0, 150) + '...' : info.content;
-                            addMessage('assistant', `📦 工具返回: ${resultText}`, true);
+                            current = { tool: info.tool, args: info.args, result: null };
+                            tools.push(current);
+                        } else if (info.type === 'result' && current) {
+                            current.result = info.content;
+                            current = null;
                         }
+                    }
+                    if (tools.length > 0) {
+                        // 2) 构建 <details> 折叠面板
+                        const details = document.createElement('details');
+                        details.className = 'tool-trace';
+                        const toolNames = tools.map(t => t.tool).join('、');
+                        details.innerHTML =
+                            `<summary>🔧 调用了 ${tools.length} 个工具：${toolNames}</summary>` +
+                            `<div class="tool-trace-body">` +
+                            tools.map(t => {
+                                const argsPretty = safeJson(t.args);
+                                const resultPretty = safeJson(t.result);
+                                const resultSummary = (t.result || '').length > 100
+                                    ? t.result.substring(0, 100) + '...'
+                                    : (t.result || '(无返回)');
+                                return `
+                                    <div class="tool-block">
+                                        <span class="tool-name">${t.tool}</span>
+                                        <div><span class="tool-label">参数</span><pre>${argsPretty}</pre></div>
+                                        <div>
+                                            <details>
+                                                <summary class="result-summary">📦 返回：${resultSummary}</summary>
+                                                <pre>${resultPretty}</pre>
+                                            </details>
+                                        </div>
+                                    </div>`;
+                            }).join('') +
+                            `</div>`;
+                        // 包装为灰色气泡容器
+                        const wrap = document.createElement('div');
+                        wrap.className = 'message tool';
+                        wrap.appendChild(details);
+                        chatMessages.appendChild(wrap);
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
                     }
                 }
                 // 显示最终回答（按 Markdown 渲染）

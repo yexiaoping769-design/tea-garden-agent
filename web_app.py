@@ -82,7 +82,7 @@ def chat():
             if hasattr(msg, 'type') and msg.type == 'tool':
                 tool_calls_info.append({
                     "type": "result",
-                    "content": msg.content[:200]
+                    "content": msg.content  # 不截断，前端 safeJson 自行美化
                 })
 
         # 最终回答（最后一条 AI 消息）
