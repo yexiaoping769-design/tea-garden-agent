@@ -1,5 +1,5 @@
 {
-  "description": "茶园智问评测集：20条。type: kb=知识库问答 / weather=天气工具 / multi=多工具组合 / web=联网搜索 / refusal=知识库外问题(考察不编造)。key_points 供LLM裁判参考；retrieval_keywords 供检索评测判定命中(全部出现在top3才算命中)。",
+  "description": "茶园智问评测集：50条。type: kb=知识库问答 / weather=天气工具 / multi=多工具组合 / web=联网搜索 / refusal=知识库外问题(考察不编造)。key_points 供LLM裁判参考；retrieval_keywords 供检索评测判定命中(全部出现在top3才算命中)。",
   "cases": [
     {
       "id": 1,
@@ -181,6 +181,278 @@
       "key_points": [],
       "expect_tools": [],
       "expectation": "知识库中没有品种对比内容，预期如实说明无法回答或依据有限资料谨慎作答，不得编造具体的品种对比结论"
+    },
+    {
+      "id": 21,
+      "category": "病虫害防治",
+      "type": "kb",
+      "question": "茶黄蓟马用什么方法诱杀？",
+      "retrieval_keywords": ["蓟马"],
+      "key_points": ["茶棍蓟马、茶黄蓟马发生高峰前可用蓝色或黄绿色诱虫板诱杀成虫"],
+      "expect_tools": ["search_tea_knowledge"]
+    },
+    {
+      "id": 22,
+      "category": "病虫害防治",
+      "type": "kb",
+      "question": "茶橙瘿螨怎么防治？",
+      "retrieval_keywords": ["瘿螨"],
+      "key_points": ["轻发生时选用藜芦根茎提取物、印楝素等生物药剂或矿物油防治", "分批多次及时采摘也是防控措施之一"],
+      "expect_tools": ["search_tea_knowledge"]
+    },
+    {
+      "id": 23,
+      "category": "病虫害防治",
+      "type": "kb",
+      "question": "绿盲蝽怎么防治？",
+      "retrieval_keywords": ["绿盲蝽"],
+      "key_points": ["9—10月利用性诱剂、色板监测绿盲蝽进入茶园时间", "入园后选用除虫菊素、苦参碱、球孢白僵菌等防治", "严重时可结合溴氰菊酯或高效氯氰菊酯兼治"],
+      "expect_tools": ["search_tea_knowledge"]
+    },
+    {
+      "id": 24,
+      "category": "病虫害防治",
+      "type": "kb",
+      "question": "茶网蝽的防控方法有哪些？",
+      "retrieval_keywords": ["茶网蝽"],
+      "key_points": ["强化越冬代害虫防控，选用除虫菊素、苦参碱、印楝素防治", "严重发生时结合联苯菊酯或高效氯氰菊酯兼治", "施药前宜先修剪茶树侧枝，增强药液穿透性"],
+      "expect_tools": ["search_tea_knowledge"]
+    },
+    {
+      "id": 25,
+      "category": "病虫害防治",
+      "type": "kb",
+      "question": "茶尺蠖幼虫用什么药剂应急防治？",
+      "retrieval_keywords": ["茶尺蠖"],
+      "key_points": ["3龄前可使用短稳杆菌、苏云金杆菌等生物农药", "严重时用高效氯氰菊酯等化学农药应急防治"],
+      "expect_tools": ["search_tea_knowledge"]
+    },
+    {
+      "id": 26,
+      "category": "病虫害防治",
+      "type": "kb",
+      "question": "大蓑蛾怎么处理？",
+      "retrieval_keywords": ["蓑蛾"],
+      "key_points": ["对大蓑蛾、茶蓑蛾、褐蓑蛾等目标明显的害虫，及时摘除虫囊，集中处理"],
+      "expect_tools": ["search_tea_knowledge"]
+    },
+    {
+      "id": 27,
+      "category": "病虫害防治",
+      "type": "kb",
+      "question": "性信息素诱捕器能诱杀哪些茶树害虫？",
+      "retrieval_keywords": ["性信息素"],
+      "key_points": ["对灰茶尺蠖、茶毛虫、茶小卷叶蛾、茶细蛾为害较重的茶园可使用性信息素诱捕器诱杀", "鳞翅目害虫成虫羽化期放置诱捕器诱杀雄虫"],
+      "expect_tools": ["search_tea_knowledge"]
+    },
+    {
+      "id": 28,
+      "category": "栽培管理",
+      "type": "kb",
+      "question": "秋茶什么时候追肥？每亩施多少？",
+      "retrieval_keywords": ["尿素"],
+      "key_points": ["秋茶追肥宜在夏茶结束后进行", "投产茶园每亩追施尿素15—20公斤或18-8-12配方茶树专用复合肥30—40公斤", "沟深10—20厘米，沟施覆土"],
+      "expect_tools": ["search_tea_knowledge"]
+    },
+    {
+      "id": 29,
+      "category": "栽培管理",
+      "type": "kb",
+      "question": "冬春季有机肥怎么施？",
+      "retrieval_keywords": ["有机肥"],
+      "key_points": ["12月—次年1月，沿茶树滴水线沟施", "一般200公斤/亩左右"],
+      "expect_tools": ["search_tea_knowledge"]
+    },
+    {
+      "id": 30,
+      "category": "栽培管理",
+      "type": "kb",
+      "question": "叶面肥怎么喷施？",
+      "retrieval_keywords": ["叶面肥"],
+      "key_points": ["12月份喷施氨基酸叶面肥等营养型叶面肥1次，1月至2月再喷1-2次", "两次喷施间隔期2周", "可用无人机喷施"],
+      "expect_tools": ["search_tea_knowledge"]
+    },
+    {
+      "id": 31,
+      "category": "栽培管理",
+      "type": "kb",
+      "question": "高温干旱时茶园搭遮阳网有什么讲究？",
+      "retrieval_keywords": ["遮阳网"],
+      "key_points": ["遮阳网要高出茶树蓬面50厘米以上", "切勿直接覆盖在蓬面上", "幼龄茶园应加强遮荫"],
+      "expect_tools": ["search_tea_knowledge"]
+    },
+    {
+      "id": 32,
+      "category": "栽培管理",
+      "type": "kb",
+      "question": "茶园被水淹了怎么办？",
+      "retrieval_keywords": ["排涝"],
+      "key_points": ["清淤排涝，疏通排水沟渠，避免积水渍害", "表土干燥后浅耕松土恢复土壤通透性", "扶正倒伏树体，培土覆盖外露根系", "亩施300公斤有机肥和20—30公斤茶树专用复合肥"],
+      "expect_tools": ["search_tea_knowledge"]
+    },
+    {
+      "id": 33,
+      "category": "栽培管理",
+      "type": "kb",
+      "question": "茶园杂草怎么控制？",
+      "retrieval_keywords": ["除草"],
+      "key_points": ["结合耕作人工或机械除草，将杂草深埋土壤", "夏季一般每月除草一次", "投产茶园宜在秋季植被开花前耕作除草", "可铺防草布或间作鼠茅草、白三叶草"],
+      "expect_tools": ["search_tea_knowledge"]
+    },
+    {
+      "id": 34,
+      "category": "栽培管理",
+      "type": "kb",
+      "question": "茶树受冻后怎么修剪？",
+      "retrieval_keywords": ["冻害"],
+      "key_points": ["受冻程度较轻的轻修剪，剪除冻死枝叶，尽量保持采摘面", "受冻重的进行深修剪、重修剪或台刈"],
+      "expect_tools": ["search_tea_knowledge"]
+    },
+    {
+      "id": 35,
+      "category": "栽培管理",
+      "type": "kb",
+      "question": "春茶开采前怎么施催芽肥？",
+      "retrieval_keywords": ["速效氮肥"],
+      "key_points": ["名优茶产区开采前40-50天施速效氮肥，每亩5-8公斤纯氮", "乌龙茶和大宗绿茶产区开采前20-30天施用"],
+      "expect_tools": ["search_tea_knowledge"]
+    },
+    {
+      "id": 36,
+      "category": "病虫害防治",
+      "type": "kb",
+      "question": "防治茶饼病可以用哪些生物药剂？",
+      "retrieval_keywords": ["茶饼病"],
+      "key_points": ["发病初期喷施补骨脂种子提取物、枯草芽孢杆菌、多抗霉素等生物药剂"],
+      "expect_tools": ["search_tea_knowledge"]
+    },
+    {
+      "id": 37,
+      "category": "病虫害防治",
+      "type": "kb",
+      "question": "黑刺粉虱什么时候打药最合适？",
+      "retrieval_keywords": ["粉虱"],
+      "key_points": ["第1代幼虫孵化盛期喷施溴氰菊酯、联苯菊酯、联苯·噻虫啉等药剂", "也可用黄红双色诱虫板诱杀"],
+      "expect_tools": ["search_tea_knowledge"]
+    },
+    {
+      "id": 38,
+      "category": "病虫害防治",
+      "type": "kb",
+      "question": "茶园装杀虫灯有什么技术要求？",
+      "retrieval_keywords": ["杀虫灯"],
+      "key_points": ["每20亩茶园设置一盏，灯高出茶蓬60厘米左右，天黑后开灯", "宜在2月至10月使用窄波LED杀虫灯诱杀鳞翅目害虫成虫"],
+      "expect_tools": ["search_tea_knowledge"]
+    },
+    {
+      "id": 39,
+      "category": "天气查询",
+      "type": "weather",
+      "question": "上海明天天气怎么样？",
+      "retrieval_keywords": [],
+      "key_points": ["报出上海明天的天气预报（温度范围、天气状况）"],
+      "expect_tools": ["get_weather"]
+    },
+    {
+      "id": 40,
+      "category": "天气查询",
+      "type": "weather",
+      "question": "武夷山后天会下雨吗？",
+      "retrieval_keywords": [],
+      "key_points": ["报出武夷山后天的天气状况与降水情况"],
+      "expect_tools": ["get_weather"]
+    },
+    {
+      "id": 41,
+      "category": "天气查询",
+      "type": "weather",
+      "question": "福州现在气温多少度？",
+      "retrieval_keywords": [],
+      "key_points": ["报出福州当前气温"],
+      "expect_tools": ["get_weather"]
+    },
+    {
+      "id": 42,
+      "category": "天气查询",
+      "type": "weather",
+      "question": "武夷山明天气温多少？要注意防霜冻吗？",
+      "retrieval_keywords": [],
+      "key_points": ["报出武夷山明天预报气温", "结合预报温度给出是否需要防霜冻的建议"],
+      "expect_tools": ["get_weather"]
+    },
+    {
+      "id": 43,
+      "category": "多工具组合",
+      "type": "multi",
+      "question": "茶小绿叶蝉严重发生时用什么药？顺便看看明天武夷山天气。",
+      "retrieval_keywords": [],
+      "key_points": ["严重发生时选用双丙环虫酯、虫螨腈、茚虫威等化学药剂", "报出武夷山明天天气"],
+      "expect_tools": ["get_weather", "search_tea_knowledge"]
+    },
+    {
+      "id": 44,
+      "category": "多工具组合",
+      "type": "multi",
+      "question": "明天武夷山要降温，茶树该怎么防冻？",
+      "retrieval_keywords": [],
+      "key_points": ["报出武夷山明天天气情况", "寒潮前落实行间覆草、蓬面覆盖草帘薄膜或遮阳网等防冻措施，寒潮结束及时揭去覆盖物"],
+      "expect_tools": ["get_weather", "search_tea_knowledge"]
+    },
+    {
+      "id": 45,
+      "category": "多工具组合",
+      "type": "multi",
+      "question": "武夷山现在气温多少？这种天气茶饼病容易发生吗？",
+      "retrieval_keywords": [],
+      "key_points": ["报出武夷山当前气温", "结合知识库茶饼病防治信息或如实说明知识库未涵盖发病气象条件"],
+      "expect_tools": ["get_weather", "search_tea_knowledge"]
+    },
+    {
+      "id": 46,
+      "category": "联网检索",
+      "type": "web",
+      "question": "今年秋茶价格行情怎么样？",
+      "retrieval_keywords": [],
+      "key_points": ["给出近期秋茶/茶叶市场行情相关信息"],
+      "expect_tools": ["tavily_search"]
+    },
+    {
+      "id": 47,
+      "category": "诚实性",
+      "type": "refusal",
+      "question": "有机茶认证怎么申请？",
+      "retrieval_keywords": [],
+      "key_points": [],
+      "expect_tools": [],
+      "expectation": "知识库中没有有机茶认证申请流程，预期如实说明无法回答，不得编造申请步骤"
+    },
+    {
+      "id": 48,
+      "category": "诚实性",
+      "type": "refusal",
+      "question": "红茶和绿茶的加工工艺有什么区别？",
+      "retrieval_keywords": [],
+      "key_points": [],
+      "expect_tools": [],
+      "expectation": "知识库中没有茶叶加工工艺内容，预期如实说明无法回答，不得编造工艺步骤"
+    },
+    {
+      "id": 49,
+      "category": "病虫害防治",
+      "type": "kb",
+      "question": "茶园要出口茶叶，用药有什么特别要注意的？",
+      "retrieval_keywords": ["出口"],
+      "key_points": ["生产出口茶叶的茶园应同时符合产品输入国的要求，慎重选择农药种类"],
+      "expect_tools": ["search_tea_knowledge"]
+    },
+    {
+      "id": 50,
+      "category": "栽培管理",
+      "type": "kb",
+      "question": "茶园间作的绿肥什么时候割？",
+      "retrieval_keywords": ["刈割"],
+      "key_points": ["间作绿肥在其生物量最大时进行刈割"],
+      "expect_tools": ["search_tea_knowledge"]
     }
   ]
 }

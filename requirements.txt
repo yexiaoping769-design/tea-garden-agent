@@ -7,3 +7,5 @@ matplotlib
 seaborn
 pandas
 IPython
+rank_bm25
+jieba

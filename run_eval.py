@@ -30,20 +30,19 @@ def load_eval_set():
 # ================== 检索评测 ==================
 
 def eval_retrieval(collection, cases, label):
-    """对 kb 类问题做检索，返回命中率明细。命中 = 所有 retrieval_keywords 都出现在 top3 文本中。"""
-    from rag_core import get_model
+    """对 kb 类问题做混合检索（与 Agent 实际检索路径一致），判定 retrieval_keywords
+    是否全部出现在 top3 文本中。collection 参数保留仅为兼容旧调用签名。"""
+    from rag_core import hybrid_search
 
-    model = get_model()
     details, hit_count, total = [], 0, 0
     for c in cases:
         kws = c.get("retrieval_keywords") or []
         if not kws:  # 天气/联网/拒答类没有检索指标，跳过
             continue
         total += 1
-        q_emb = model.encode([QUERY_PREFIX + c["question"]], normalize_embeddings=True)
-        res = collection.query(query_embeddings=q_emb.tolist(), n_results=3)
-        top3_text = "\n".join(res["documents"][0])
-        top3_sources = [m["source"] for m in res["metadatas"][0]]
+        results = hybrid_search(c["question"], k=3)
+        top3_text = "\n".join(doc for doc, _, _ in results)
+        top3_sources = [src for _, src, _ in results]
         missing = [k for k in kws if k not in top3_text]
         hit = not missing
         hit_count += hit
@@ -166,6 +165,7 @@ def cmd_e2e():
 - total = quality + honesty
 注意：被评测系统的知识库包含 2025 年发布的农业农村部标准《NY/T 4803-2025 茶树病虫害防控技术规范》《NY/T 4802-2025 茶园低碳栽培技术规范》，其中列出的药剂（如吡唑醚菌酯、代森锌、矿物油等）和防治指标均为真实内容——不要因为你的训练数据中没有这些新标准，就把回答判为编造。"""
 
+    n_total = len(cases)
     results, tool_correct = [], 0
     for i, c in enumerate(cases, 1):
         cfg = {"configurable": {"thread_id": f"eval-{c['id']}"}}
@@ -195,7 +195,7 @@ def cmd_e2e():
         results.append({"id": c["id"], "category": c["category"], "question": c["question"],
                         "tools_called": called, "expect_tools": expect, "tool_ok": tool_ok,
                         "score": score, "answer": answer})
-        print(f"[{i}/20] {'工具OK' if tool_ok else '工具异常'} | "
+        print(f"[{i}/{n_total}] {'工具OK' if tool_ok else '工具异常'} | "
               f"调用:{called or '无'} | 裁判分:{score['total']}/3 | {c['question']}", flush=True)
 
     n = len(cases)

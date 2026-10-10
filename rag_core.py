@@ -72,6 +72,8 @@ def get_splitter() -> RecursiveCharacterTextSplitter:
 # ---- 单例：模型约100MB、加载约2秒，进程内只加载一次 ----
 _model = None
 _collection = None
+_bm25 = None          # BM25 关键词索引（惰性构建，入库后失效重建）
+_bm25_corpus = None   # 与 BM25 索引对齐的知识块文本
 
 
 def get_model():
@@ -87,6 +89,73 @@ def get_collection():
         client = chromadb.PersistentClient(path=str(BASE / "kb_db"))
         _collection = client.get_collection("tea_knowledge")
     return _collection
+
+
+def _tokenize(text: str) -> list[str]:
+    """中文分词（jieba），过滤空白 token——BM25 需要词粒度输入。"""
+    import jieba
+    return [t for t in jieba.lcut(text) if t.strip()]
+
+
+def get_bm25():
+    """构建 BM25 关键词索引（rank_bm25）：与向量检索互补，
+    专治"专有名词精确匹配"型查询（如"蓑蛾""出口"），向量按语义找容易偏。"""
+    global _bm25, _bm25_corpus
+    if _bm25 is None:
+        from rank_bm25 import BM25Okapi
+        data = get_collection().get(include=["documents"])
+        _bm25_corpus = data["documents"]
+        tokenized = [_tokenize(d) for d in _bm25_corpus]
+        _bm25 = BM25Okapi(tokenized)
+    return _bm25, _bm25_corpus
+
+
+def _rrf_fuse(*ranked_lists, k: int = 60):
+    """Reciprocal Rank Fusion：对多路检索结果按名次融合。
+    每路给文档贡献 1/(k+名次) 分（名次从1起），总分排序即融合结果。
+    k=60 是论文推荐值，缓和头部名次的权重差异。"""
+    scores: dict[str, float] = {}
+    for lst in ranked_lists:
+        for rank, doc_id in enumerate(lst, start=1):
+            scores[doc_id] = scores.get(doc_id, 0.0) + 1.0 / (k + rank)
+    return sorted(scores, key=scores.get, reverse=True)
+
+
+def hybrid_search(query: str, k: int = 3, candidates: int = 10):
+    """混合检索：向量语义召回 + BM25 关键词召回，RRF 融合取 top-k。
+    返回 [(document, source, distance_or_None), ...]，distance 为 None 表示
+    该块仅被 BM25 命中（向量通道未召回）。"""
+    collection = get_collection()
+
+    # 通道1：向量语义检索
+    q_emb = get_model().encode([QUERY_PREFIX + query], normalize_embeddings=True)
+    vec = collection.query(query_embeddings=q_emb.tolist(), n_results=candidates)
+    vec_ids = vec["ids"][0]
+
+    # 通道2：BM25 关键词检索
+    bm25, corpus = get_bm25()
+    scores = bm25.get_scores(_tokenize(query))
+    bm25_order = sorted(range(len(corpus)), key=lambda i: scores[i], reverse=True)[:candidates]
+    # 需要块 id 与 Chroma 一一对应：BM25 语料顺序即 collection.get() 顺序
+    all_ids = collection.get(include=[])["ids"]
+    bm25_ids = [all_ids[i] for i in bm25_order]
+
+    # RRF 融合 → 取 top-k，再回查内容与来源
+    fused_ids = _rrf_fuse(vec_ids, bm25_ids)[:k]
+    vec_meta = {cid: (doc, meta, dist) for cid, doc, meta, dist in zip(
+        vec_ids, vec["documents"][0], vec["metadatas"][0], vec["distances"][0])}
+    need_fetch = [cid for cid in fused_ids if cid not in vec_meta]
+    fetched = {}
+    if need_fetch:
+        got = collection.get(ids=need_fetch, include=["documents", "metadatas"])
+        fetched = {cid: (doc, meta, None) for cid, doc, meta in zip(
+            got["ids"], got["documents"], got["metadatas"])}
+
+    results = []
+    for cid in fused_ids:
+        doc, meta, dist = vec_meta.get(cid) or fetched.get(cid)
+        results.append((doc, meta["source"], dist))
+    return results
 
 
 def ingest_file(path: Path, source_name: str | None = None) -> int:
@@ -109,18 +178,18 @@ def ingest_file(path: Path, source_name: str | None = None) -> int:
         embeddings=embeddings.tolist(),
         metadatas=[{"source": src}] * len(chunks),
     )
+    global _bm25, _bm25_corpus
+    _bm25 = _bm25_corpus = None  # 知识库已更新，BM25 索引下次检索时重建
     return len(chunks)
 
 
 def search_tea_knowledge(query: str, k: int = 3) -> str:
-    """检索本地茶园知识库，返回带来源标注的资料文本。"""
-    q_emb = get_model().encode([QUERY_PREFIX + query], normalize_embeddings=True)
-    res = get_collection().query(query_embeddings=q_emb.tolist(), n_results=k)
+    """检索本地茶园知识库（向量+BM25 混合检索，RRF 融合），返回带来源标注的资料文本。"""
+    results = hybrid_search(query, k=k)
     lines = []
-    for doc, meta, dist in zip(
-        res["documents"][0], res["metadatas"][0], res["distances"][0]
-    ):
-        lines.append(f"[来源: {meta['source']} | 相似度 {1 - dist:.2f}]\n{doc}")
+    for doc, source, dist in results:
+        sim = f"相似度 {1 - dist:.2f}" if dist is not None else "关键词命中"
+        lines.append(f"[来源: {source} | {sim}]\n{doc}")
     return "\n\n".join(lines)
 
 
