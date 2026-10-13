@@ -71,9 +71,12 @@ def get_splitter() -> RecursiveCharacterTextSplitter:
 
 # ---- 单例：模型约100MB、加载约2秒，进程内只加载一次 ----
 _model = None
+_reranker = None      # bge-reranker cross-encoder 重排模型（约 400MB，惰性加载）
 _collection = None
 _bm25 = None          # BM25 关键词索引（惰性构建，入库后失效重建）
 _bm25_corpus = None   # 与 BM25 索引对齐的知识块文本
+
+RERANKER_NAME = "BAAI/bge-reranker-base"
 
 
 def get_model():
@@ -81,6 +84,18 @@ def get_model():
     if _model is None:
         _model = SentenceTransformer(MODEL_NAME)
     return _model
+
+
+def get_reranker():
+    """cross-encoder 重排模型：对 RRF 融合的小候选集做二次精准打分。
+    bi-encoder（bge-small-zh）把 query 和 doc 分别编码，高效但 query-doc 交互不充分；
+    cross-encoder（bge-reranker）把 query+doc 拼在一起编码，交互充分但慢，
+    所以只在 RRF 筛出来的 top-8 小候选集上跑，取 top-3。"""
+    global _reranker
+    if _reranker is None:
+        from sentence_transformers import CrossEncoder
+        _reranker = CrossEncoder(RERANKER_NAME)
+    return _reranker
 
 
 def get_collection():
@@ -121,41 +136,61 @@ def _rrf_fuse(*ranked_lists, k: int = 60):
     return sorted(scores, key=scores.get, reverse=True)
 
 
-def hybrid_search(query: str, k: int = 3, candidates: int = 10):
-    """混合检索：向量语义召回 + BM25 关键词召回，RRF 融合取 top-k。
-    返回 [(document, source, distance_or_None), ...]，distance 为 None 表示
-    该块仅被 BM25 命中（向量通道未召回）。"""
+def hybrid_search(query: str, k: int = 3, candidates: int = 10,
+                  rerank_top: int = 8, use_reranker: bool = True):
+    """三阶段混合检索：向量语义召回 + BM25 关键词召回 → RRF 融合取 top-8
+    → bge-reranker cross-encoder 重排 → 取 top-k。
+    返回 [(document, source, rerank_score_or_None), ...]。
+
+    use_reranker=False 可跳过重排，仅用 RRF 融合结果，用于对比评测。"""
     collection = get_collection()
 
-    # 通道1：向量语义检索
+    # 通道1：向量语义检索（bi-encoder，高效，覆盖语义泛化）
     q_emb = get_model().encode([QUERY_PREFIX + query], normalize_embeddings=True)
     vec = collection.query(query_embeddings=q_emb.tolist(), n_results=candidates)
     vec_ids = vec["ids"][0]
 
-    # 通道2：BM25 关键词检索
+    # 通道2：BM25 关键词检索（专治专有名词精确匹配）
     bm25, corpus = get_bm25()
     scores = bm25.get_scores(_tokenize(query))
     bm25_order = sorted(range(len(corpus)), key=lambda i: scores[i], reverse=True)[:candidates]
-    # 需要块 id 与 Chroma 一一对应：BM25 语料顺序即 collection.get() 顺序
     all_ids = collection.get(include=[])["ids"]
     bm25_ids = [all_ids[i] for i in bm25_order]
 
-    # RRF 融合 → 取 top-k，再回查内容与来源
-    fused_ids = _rrf_fuse(vec_ids, bm25_ids)[:k]
-    vec_meta = {cid: (doc, meta, dist) for cid, doc, meta, dist in zip(
-        vec_ids, vec["documents"][0], vec["metadatas"][0], vec["distances"][0])}
+    # 阶段1：RRF 融合 → 取 rerank_top 候选送入 reranker
+    fused_ids = _rrf_fuse(vec_ids, bm25_ids)[:rerank_top]
+
+    # 回查候选的文本与来源
+    vec_meta = {cid: (doc, meta) for cid, doc, meta in zip(
+        vec_ids, vec["documents"][0], vec["metadatas"][0])}
     need_fetch = [cid for cid in fused_ids if cid not in vec_meta]
     fetched = {}
     if need_fetch:
         got = collection.get(ids=need_fetch, include=["documents", "metadatas"])
-        fetched = {cid: (doc, meta, None) for cid, doc, meta in zip(
+        fetched = {cid: (doc, meta) for cid, doc, meta in zip(
             got["ids"], got["documents"], got["metadatas"])}
 
-    results = []
+    candidates_data = []
     for cid in fused_ids:
-        doc, meta, dist = vec_meta.get(cid) or fetched.get(cid)
-        results.append((doc, meta["source"], dist))
-    return results
+        doc, meta = vec_meta.get(cid) or fetched.get(cid)
+        candidates_data.append((cid, doc, meta["source"]))
+
+    if not use_reranker or len(candidates_data) <= k:
+        # 跳过重排：直接按 RRF 顺序取 top-k
+        return [(doc, src, None) for _, doc, src in candidates_data[:k]]
+
+    # 阶段2：cross-encoder 重排（query+doc 拼一起编码，交互充分但慢）
+    reranker = get_reranker()
+    pairs = [(query, doc) for _, doc, _ in candidates_data]
+    rerank_scores = reranker.predict(pairs)
+
+    # 按 reranker 分数排序，取 top-k
+    ranked = sorted(
+        zip(candidates_data, rerank_scores),
+        key=lambda x: x[1], reverse=True
+    )[:k]
+
+    return [(doc, src, float(score)) for (_, doc, src), score in ranked]
 
 
 def ingest_file(path: Path, source_name: str | None = None) -> int:
@@ -183,13 +218,14 @@ def ingest_file(path: Path, source_name: str | None = None) -> int:
     return len(chunks)
 
 
-def search_tea_knowledge(query: str, k: int = 3) -> str:
-    """检索本地茶园知识库（向量+BM25 混合检索，RRF 融合），返回带来源标注的资料文本。"""
-    results = hybrid_search(query, k=k)
+def search_tea_knowledge(query: str, k: int = 3, use_reranker: bool = True) -> str:
+    """检索本地茶园知识库：BM25+向量混合召回 → RRF 融合 → bge-reranker 重排，
+    返回带来源与重排分数标注的资料文本。"""
+    results = hybrid_search(query, k=k, use_reranker=use_reranker)
     lines = []
-    for doc, source, dist in results:
-        sim = f"相似度 {1 - dist:.2f}" if dist is not None else "关键词命中"
-        lines.append(f"[来源: {source} | {sim}]\n{doc}")
+    for doc, source, score in results:
+        score_label = f"重排分数 {score:.2f}" if score is not None else "RRF融合"
+        lines.append(f"[来源: {source} | {score_label}]\n{doc}")
     return "\n\n".join(lines)
 
 

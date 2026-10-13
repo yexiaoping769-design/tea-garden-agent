@@ -9,3 +9,7 @@ pandas
 IPython
 rank_bm25
 jieba
+sentence-transformers
+chromadb
+pymupdf
+python-docx
